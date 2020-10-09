@@ -1,0 +1,445 @@
+# ASSIGNMENT 1
+# You will be implementing the Legal Aid Bureau's interview to determine
+# whether an applicant is eligible for legal aid. 
+# The total score that can be awarded for this assignment is 20.
+# The reference interview is found here:
+# https://guided.page/interview?i=docassemble.playground3%3Alab.yml#page1
+# Resources are found here:
+# https://lab.mlaw.gov.sg/legal-services/taking-the-means-test/
+# https://sso.agc.gov.sg/SL/LAAA1995-RG1#Sc1-
+---
+metadata:
+  title: |
+    Application for LAB Legal Aid Services
+  short title: |
+    Legal Aid Application
+  tab title: |
+    LAB Aid Application
+  subtitle: |
+    Application and eligibility for Legal Aid Bureau legal aid services
+  description: |
+    Assessment of eligibility for LAB legal aid
+  authors:
+    - name: Ryan Kay Leong
+      organization: COR-LAW-2215 Digital Intelligence for Lawyers
+  revision_date: 2020-10-09
+  sessions are unique: True
+---
+sections:
+  - Introduction
+  - Personal Information:
+    - Personal Particulars
+    - Contact Information
+    - Address
+  - Merits Test
+  - Means Test:
+    - Property Information
+    - Savings & Investments
+    - Per Capita Household Income
+  - Confirmation
+---
+features:
+  navigation: True
+  progress bar: True
+  default date max: "2020-10-09"
+---
+initial: True
+code: |
+  if returning_user(minutes=0.5):
+    welcome_back
+---
+event: welcome_back
+question: |
+  Welcome back!
+subquestion: |
+  You are currently in the
+  **${ nav.get_section(display=True) }**
+  section.
+
+  ${ nav }
+
+  Press "Continue" to pick up
+  where you left off.
+buttons:
+  Continue: continue
+---
+# DO NOT MODIFY THIS BLOCK. SCORE: 5
+# Implement a check_nric function in a module file called validation.py.
+# It should check for (1) correct format and (2) that it is a valid NRIC.
+# Use a regular expression to test for the correct format.
+# Implement the checksum algorithm to determine whether the NRIC is valid.
+# The NRIC checksum algorithm can be found on:
+# http://www.ngiam.net/NRIC/ or Wikipedia
+# Test your function using data from: https://samliew.com/nric-generator
+modules:
+  .validation
+---
+# DO NOT MODIFY THIS BLOCK
+# This is your objects block.
+# Individual is used for the applicant.
+# DAList is used for household_incomes.
+objects:
+  applicant: Individual
+  household_members: DAList.using(object_type=Individual, there_is_another=False)
+---
+# MODIFY THIS BLOCK (BUT DO NOT MOVE IT). SCORE: 5
+# Use this block to control the interview logic.
+# Include this line somewhere in your code: 
+#   household_members.append(applicant)
+# This line of code adds the applicant to the household_members DAList.
+# This ensures that the applicant appears in the household_members.table.
+mandatory: True
+code: |
+  landing_page_main
+  if citizenship == 'None of the above':
+    ineligible_screen_citizen
+  else:
+    if applicant.age_in_years() < 21:
+      below_21
+    else:
+      mobile_number
+      address_line1
+      landing_page_merits
+      merit_info
+      landing_page_means
+      property_no
+      if not property_no:
+        ineligible_screen_property
+      else:
+        reside_property
+        if not reside_property:
+          ineligible_screen_reside
+        else:
+          value_property
+          if value_property > 13000:
+            ineligible_screen_prop_value
+          else:
+             if applicant.age_in_years () >= 60 and savings > 40000:
+               ineligible_screen_savings_over_60
+             if applicant.age_in_years () < 60 and savings > 10000:
+               ineligible_screen_savings_under_60
+             else:
+               user_upload_personal_income
+    household_members.append(applicant)
+---
+# DO NOT MODIFY THIS BLOCK OR MOVE IT
+mandatory: True
+code: |
+  if household_members.there_are_any:
+    review_household_members
+---
+# MODIFY THIS BLOCK (BUT DO NOT MOVE IT). SCORE: 5
+# Use this block to write code that calculates the average PCHI
+mandatory: True
+code: |
+  if sum(member.income for member in household_members) / len(household_members) > 11400:
+    ineligible_screen_pchi
+---
+continue button field: landing_page_main
+question: |
+  Welcome to the Legal Aid Bureau (LAB) application for Legal Aid!
+subquestion: |
+  This application is to determine if you are eligible for legal aid, and to set up an appointment with a duty lawyer.
+  
+  In order to be eligible, you will be required to pass both the means and merits test. More details will be provided where relevant.
+  
+  For a brief overview on the requirements, [click here](https://lab.mlaw.gov.sg/legal-services/do-i-qualify/).
+  
+  If you are ready, please press "Continue".
+progress: 0
+section: Introduction 
+---
+question: |
+  Citizenship Status
+subquestion: |
+  LAB aid is only applicable for Singapore Citizens, Permanent Residents, and citizens or residents of contracting states for cases involving [international child abduction](https://www.msf.gov.sg/Singapore-Central-Authority/Pages/Hague-Convention-on-the-Civil-Aspects-of-International-Child-Abduction.aspx)
+field: citizenship
+default: 'Singapore Citizen'
+choices:
+ - 'Singapore Citizen'
+ - 'Permanent Resident'
+ - 'Citizen/Resident of contracting state regarding child abduction'
+ - 'None of the above'
+progress: 5
+section: Personal Information
+---
+question: |
+  Personal Particulars
+fields:
+ - First Name: applicant.name.first
+ - Last Name: applicant.name.last
+ - Country of Residence: user_country
+   code: countries_list()
+   default: Singapore
+ - NRIC: nric
+   validate: check_nric
+   hide if:
+     code: | 
+       citizenship == 'Citizen/Resident of contracting state regarding child abduction'
+ - Birthday: applicant.birthdate
+   datatype: date
+   default: |
+     ${ today().minus(years=21) }
+ - Please upload your NRIC/Passport: user_upload_NRIC
+   datatype: files
+section: Personal Particulars
+---
+question: |
+  Contact Information
+fields:
+ - E-mail: electronic_mail
+   datatype: email
+ - Mobile Number: mobile_number
+   datatype: number
+progress: 15
+section: Contact Information
+---
+question: |
+  Address
+fields:
+ - Address line 1: address_line1
+ - Address line 2: address_line2
+ - Postal Code: postcode
+progress: 20
+section: Address
+---
+continue button field: landing_page_merits
+question: |
+  Merits Test
+subquestion: |
+  The [merits test](https://lab.mlaw.gov.sg/legal-services/taking-the-merits-test/) is used to determine if your case has reasonable grounds for bringing or defending in court.
+  
+  Following the submission of this application, a duty lawyer will arrange an appointment with you within the next 3 days to take your statement and discuss you case. The lawyer will then draft an opinion. which will be put before the Legal Aid Board for their consideration on whether to grant you legal aid.
+ 
+  If you are ready, please press "Continue".
+progress: 20
+section: Merits Test
+---
+continue button field: landing_page_means
+question: |
+  Means Test
+subquestion: |
+  The [means test](https://lab.mlaw.gov.sg/legal-services/taking-the-means-test/) is used to determine if your financial circumstances are limited, in order to be eligible for legal aid.
+  
+  There are 3 major requirements to pass the means test:
+  
+  1. Your **average Per Capita Gross Monthly Household Income (PCHI)** must be $950 or lower for the last 12 months prior to the application;
+  
+  2. The **Annual Value** of your place of residence owned by you must be $13,000 or lower; and
+  
+  3. Your **savings and non-CPF investments** must be $10,000 or lower, if you are younger than 60 years old. Applicants aged 60 and above are allowed to have savings and non-CPF investments of $40,000 or lower.
+ 
+  If you are ready, please press "Continue".
+progress: 45
+section: Means Test
+---
+question: |
+  Applicant Income
+subquestion: |
+  Please provide your total income for the past 12 months, and upload your income statement.
+fields:
+  - Value: applicant.income
+    datatype: currency
+    min: 0
+    default: 0
+  - Income Statement: user_upload_personal_income
+    datatype: files
+progress: 55
+section: Per Capita Household Income
+---
+terms: 
+  annual value: |
+    The annual value of your property can be found under the View Property Portfolio e-Service on the [IRAS website](https://mytax.iras.gov.sg/ESVWeb/default.aspx?target=MPORLoginSelection&returnUrl=target%3dMPTPropertySearch%26toLoginSelection%3dtrue)
+---
+question: |
+  Property Information
+subquestion: |
+  Please fill in the below questions pertaining to your owned property.
+fields:
+  - "Do you own more than one property ": property_no
+    datatype: noyesradio
+  - "Do you currently reside in this property?": reside_property
+    datatype: yesnoradio
+    show if: property_no
+  - "What is the {annual value} of your residential property?": value_property
+    datatype: currency
+    min: 0
+    show if: reside_property
+progress: 65
+section: Property Information
+---
+question: |
+  Savings and Investment Information
+subquestion: |
+  Your total savings and non-CPF investment is calculated by adding up the value of the following assets that you own in your name:
+  
+  a) Bank accounts savings (personal or joint);
+  
+  b) Overall value of shares in your Central Depository (CDP) account; and
+  
+  c) Any other financial/investment products with a cash value, such as fixed deposit accounts at financial institutions, and shares, bonds and exchange traded funds aside from those in your CDP account.
+fields:
+  - "How much total savings and non-CPF investment do you have?": savings
+    datatype: currency
+    min: 0
+    default: 0
+progress: 75
+section: Savings & Investments
+---
+mandatory: True
+question: |
+  Please upload the income statements of all family members listed prior
+fields:
+  - Income Statement: user_upload_family_income
+    datatype: files
+---
+mandatory: True
+question: |
+  Declaration
+subquestion: |
+  I declare that all the information provided by me in this form is true, correct and accurate.
+  
+  
+  I understand and acknowledge that if any of the information provided by me in this form is false or inaccurate, I and/ or my Family Members will be liable to repay in full the value of any assistance granted, inclusive of all administrative expenses, and also may face criminal prosecution.
+
+
+  Where I am providing consent on behalf of the Main Applicant/ Family Member(s) who is under 21 years of age, I further declare that I am his/ her parent/ legal guardian.
+ 
+ 
+  Where I am providing consent on behalf of the Main Applicant/ Family Member(s) who is mentally incapacitated, I further declare that I am:
+
+  (a) his/ her appointed donee(s) acting under a Lasting Power of Attorney granted by the Main Applicant/ Family Member under the Mental Capacity Act (Cap. 177A) when he/ she was above 21 years old, or 
+
+  (b) his/ her deputy(s) appointed by the Court under the Mental Capacity Act (Cap. 177A) to act on behalf of the Main Applicant/Family Member.
+
+signature: sign_declare
+---
+# DO NOT MODIFY THIS BLOCK
+table: household_members.table
+rows: household_members
+columns: 
+  - Name: row_item
+  - Birthdate: row_item.birthdate
+  - Income: row_item.income
+edit:
+  - name.first
+---
+# DO NOT MODIFY THIS BLOCK
+question: | 
+  Please add all other household members.
+subquestion: |
+  A household member is any person residing with you and related by:
+  
+  1. blood
+  2. marriage; or
+  3. adoption.
+  
+  Press continue when you have added all household members.
+  
+  ${household_members.table}
+
+  ${household_members.add_action() }
+  
+field: review_household_members
+---
+# DO NOT MODIFY THIS BLOCK
+question: |
+  Information about your ${ordinal(i)} household member:
+fields:
+  - First Name: household_members[i].name.first
+  - Last Name: household_members[i].name.last
+  - Birthdate: household_members[i].birthdate
+    datatype: date
+  - "This person's total income in past 12 months": household_members[i].income
+    datatype: currency
+    min: 0
+    default: 0
+---
+question: |
+  Merits Test
+subquestion: |
+  Briefly describe your issue and main concerns.
+  
+  Please be specific and concise.
+fields:
+  - "": merit_info
+    input type: area
+    rows: 15
+progress: 40
+section: Merits Test
+---
+question:  |
+  Sorry but you are ineligible to apply for LAB Legal Advice.
+subquestion: |
+  Click [here](https://lab.mlaw.gov.sg/legal-services/do-i-qualify/) to find out more about *citizenship requirements* to be eliible for LAB services.
+event: ineligible_screen_citizen
+---
+question: |
+  Sorry but you are ineligible to apply for LAB Legal Advice.
+subquestion: |
+  As you are *under 21 years old*, your parent or guardian is required to apply on your behalf.
+  
+  Do [contact us](https://eservices.mlaw.gov.sg/enquiry/) for any enquiries.
+event: below_21
+---
+question: |
+  Sorry but you are ineligible to apply for LAB Legal Advice.
+subquestion: |
+  As your *Average Per Capita Monthly Household Income is over $950*, you do not qualify under the [means test](https://lab.mlaw.gov.sg/legal-services/taking-the-means-test/).
+  
+   If you are unable to pay for a private lawyer due to certain circumstances (eg financial difficulty due to major medical outlays), you may contact the MinLaw Services Centre for further assistance via the [online form](https://eservices.mlaw.gov.sg/enquiry/) or at 1800 2255 529
+event: ineligible_screen_pchi
+---
+question: |
+  Sorry but you are ineligible to apply for LAB Legal Advice.
+subquestion: |
+  As you *own more than one property*, you do not qualify under the [means test](https://lab.mlaw.gov.sg/legal-services/taking-the-means-test/).
+  
+   If you are unable to pay for a private lawyer due to certain circumstances (eg financial difficulty due to major medical outlays), you may contact the MinLaw Services Centre for further assistance via the [online form](https://eservices.mlaw.gov.sg/enquiry/) or at 1800 2255 529
+event: ineligible_screen_property
+---
+question: |
+  Sorry but you are ineligible to apply for LAB Legal Advice.
+subquestion: |
+  As you *do not reside in your owned property*, you do not qualify under the [means test](https://lab.mlaw.gov.sg/legal-services/taking-the-means-test/).
+  
+   If you are unable to pay for a private lawyer due to certain circumstances (eg financial difficulty due to major medical outlays), you may contact the MinLaw Services Centre for further assistance via the [online form](https://eservices.mlaw.gov.sg/enquiry/) or at 1800 2255 529
+event: ineligible_screen_reside
+---
+question: |
+  Sorry but you are ineligible to apply for LAB Legal Advice.
+subquestion: |
+  As your *annual property value is more than $13,000*, you do not qualify under the [means test](https://lab.mlaw.gov.sg/legal-services/taking-the-means-test/).
+  
+   If you are unable to pay for a private lawyer due to certain circumstances (eg financial difficulty due to major medical outlays), you may contact the MinLaw Services Centre for further assistance via the [online form](https://eservices.mlaw.gov.sg/enquiry/) or at 1800 2255 529
+event: ineligible_screen_prop_value
+---
+question: |
+  Sorry but you are ineligible to apply for LAB Legal Advice.
+subquestion: |
+  As your *savings and non-CPF investments are above $10,000*, you do not qualify under the [means test](https://lab.mlaw.gov.sg/legal-services/taking-the-means-test/).
+  
+   If you are unable to pay for a private lawyer due to certain circumstances (eg financial difficulty due to major medical outlays), you may contact the MinLaw Services Centre for further assistance via the [online form](https://eservices.mlaw.gov.sg/enquiry/) or at 1800 2255 529
+event: ineligible_screen_savings_under_60
+---
+question: |
+  Sorry but you are ineligible to apply for LAB Legal Advice.
+subquestion: |
+  As your *savings and non-CPF investments are above $40,000*, you do not qualify under the [means test](https://lab.mlaw.gov.sg/legal-services/taking-the-means-test/).
+  
+   If you are unable to pay for a private lawyer due to certain circumstances (eg financial difficulty due to major medical outlays), you may contact the MinLaw Services Centre for further assistance via the [online form](https://eservices.mlaw.gov.sg/enquiry/) or at 1800 2255 529
+event: ineligible_screen_savings_over_60
+---
+mandatory: True
+question: |
+  Thank you for submitting your application.
+subquestion: |
+  You can expect to hear from us shortly to schedule an appointment with our duty lawyer. A copy of this interview will be sent to the email address provided. In the meantime, if you have any queries, do read our [FAQ](https://lab.mlaw.gov.sg/legal-services/grant-of-aid/) or contact us at our [enquiry page](https://eservices.mlaw.gov.sg/enquiry/)
+  
+  Do note that even the event that your application passess all the tests, the Director of Legal Aid reserves [discretion](https://lab.mlaw.gov.sg/legal-services/do-i-qualify/) to refuse aid if there are extenuating circumstances, such as if a third party who is able to fund the litigation stands to benefit.
+event: successful_application
+progress: 100
+section: Confirmation
+# IMPLEMENT ALL YOUR QUESTION BLOCKS.
+# Implement all the question blocks correctly. Score 3
+# Improving the usability / user experience. Score 2
